@@ -191,10 +191,13 @@ Can you help me understand what's causing this and suggest a fix?
 ## Step 7: Review and Commit Changes
 
 ### 7.1 Review Your Changes
+Read through the changed lines of code, either through the built is features in your IDE or by running:
+
 ```bash
 git status
 git diff
 ```
+
 
 Check that:
 - **All changes relate to the issue** you're fixing
@@ -203,7 +206,7 @@ Check that:
 - **Code changes make sense** for the problem being solved
 
 ### 7.2 Use AI to Review Changes
-If unsure about any changes:
+If unsure about any changes or you don't know how exactally the changed code relates to the fix. Start a freash chat and ask:
 ```
 I made these changes to fix [issue description]:
 
