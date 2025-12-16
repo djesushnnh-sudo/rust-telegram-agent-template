@@ -90,12 +90,11 @@ impl CommandHandler {
     /// Handle the /help command
     async fn handle_help(&self, bot: Bot, msg: Message) -> BotResult<()> {
         let help_text = format!(
-            "🤖 <b>Available Commands:</b>\n\n{}\n\n💡 This bot supports AI routing and message processing.",
+            "🤖 *Available Commands:*\n\n{}\n\n💡 This bot supports AI routing and message processing.",
             BotCommand::descriptions()
         );
         
         bot.send_message(msg.chat.id, help_text)
-            .parse_mode(teloxide::types::ParseMode::Html)
             .await
             .map_err(BotError::Telegram)?;
         
