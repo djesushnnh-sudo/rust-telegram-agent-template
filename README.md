@@ -25,16 +25,31 @@ A clean, extensible foundation for building Telegram bots in Rust. This template
 - Save the bot token provided (keep it secure!)
 
 ### 2. Set up the Project
+
+**On Linux/macOS:**
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd telegram-bot-template
+cd rust-telegram-agent-template
 
 # Copy environment template
 cp .env.example .env
 
 # Edit configuration
 nano .env  # Add your bot token
+```
+
+**On Windows:**
+```cmd
+# Clone the repository
+git clone <repository-url>
+cd rust-telegram-agent-template
+
+# Copy environment template
+copy .env.example .env
+
+# Edit configuration
+notepad .env
 ```
 
 ### 3. Configure Your Bot
@@ -106,6 +121,9 @@ telegram-bot-template/
 ## ⚙️ Configuration
 
 The bot uses environment variables for configuration. Copy `.env.example` to `.env` and customize:
+
+**Linux/macOS:** `cp .env.example .env`  
+**Windows:** `copy .env.example .env`
 
 ### Required Configuration
 ```bash
