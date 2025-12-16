@@ -61,15 +61,26 @@ impl Config {
     /// based on the DEPLOY_ENV variable, then loads configuration from environment variables.
     pub fn from_env() -> ConfigResult<Self> {
         // Load environment-specific configuration file first
-        let deploy_env = env::var("DEPLOY_ENV").unwrap_or_else(|_| "dev".to_string());
+        let deploy_env = env::var("DEPLOY_ENV").unwrap_or_else(|_| "prod".to_string());
         let env_file = format!(".env.{}", deploy_env);
         
+        println!("DEBUG: DEPLOY_ENV = {}", deploy_env);
+        println!("DEBUG: Trying to load file: {}", env_file);
+        
         match dotenv::from_filename(&env_file) {
-            Ok(_) => log::info!("✅ Successfully loaded {}", env_file),
-            Err(_) => {
+            Ok(_) => {
+                println!("DEBUG: Successfully loaded {}", env_file);
+                log::info!("✅ Successfully loaded {}", env_file);
+            },
+            Err(e) => {
+                println!("DEBUG: Failed to load {}: {}", env_file, e);
                 // Fallback to default .env file
-                if let Err(_) = dotenv::dotenv() {
+                println!("DEBUG: Trying to load .env as fallback");
+                if let Err(e2) = dotenv::dotenv() {
+                    println!("DEBUG: Failed to load .env: {}", e2);
                     log::warn!("⚠️ No .env file found, using system environment variables only");
+                } else {
+                    println!("DEBUG: Successfully loaded .env as fallback");
                 }
             }
         }
@@ -77,6 +88,11 @@ impl Config {
             .map_err(|_| ConfigError::MissingVariable { 
                 variable: "TELEGRAM_BOT_TOKEN".to_string() 
             })?;
+        
+        // Debug: Print token info (without revealing the actual token)
+        println!("DEBUG: Token length: {}", bot_token.len());
+        println!("DEBUG: Token contains colon: {}", bot_token.contains(':'));
+        println!("DEBUG: Token first 10 chars: {}", &bot_token[..std::cmp::min(10, bot_token.len())]);
 
         let log_level = env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
 
