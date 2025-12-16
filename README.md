@@ -34,8 +34,6 @@ cd rust-telegram-agent-template
 
 # Copy environment template
 cp .env.example .env
-
-# IMPORTANT: Read step 3 carefully about which file to edit!
 ```
 
 **On Windows:**
@@ -46,8 +44,6 @@ cd rust-telegram-agent-template
 
 # Copy environment template
 copy .env.example .env
-
-# IMPORTANT: Read step 3 carefully about which file to edit!
 ```
 
 ### 3. Configure Your Bot
