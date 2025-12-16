@@ -1,0 +1,112 @@
+version: '3.8'
+
+services:
+  telegram-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: telegram-bot-template
+    restart: unless-stopped
+    
+    # Environment variables - customize these or use .env file
+    environment:
+      # Required: Set your bot token here or in .env file
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-your_bot_token_here}
+      
+      # Logging configuration
+      - RUST_LOG=${RUST_LOG:-info}
+      
+      # Network configuration
+      - BOT_WEBHOOK_URL=${BOT_WEBHOOK_URL:-}
+      - BOT_PORT=${BOT_PORT:-8080}
+      
+      # Feature flags
+      - AI_ENABLED=${AI_ENABLED:-false}
+      
+      # Add your custom environment variables here
+      # - WEATHER_API_KEY=${WEATHER_API_KEY:-}
+      # - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      # - DATABASE_URL=${DATABASE_URL:-}
+    
+    # Port mapping (only needed for webhook mode)
+    ports:
+      - "${BOT_PORT:-8080}:8080"
+    
+    # Volume mounts for persistent data (optional)
+    volumes:
+      # Uncomment if you need persistent storage
+      # - ./data:/app/data
+      # - ./logs:/app/logs
+      pass
+    
+    # Resource limits (adjust based on your needs)
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.25'
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "pgrep", "telegram-bot-template"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Optional: Add additional services like database, redis, etc.
+# Uncomment and customize as needed
+
+# Database service example (PostgreSQL)
+#  postgres:
+#    image: postgres:15-alpine
+#    container_name: telegram-bot-db
+#    restart: unless-stopped
+#    environment:
+#      - POSTGRES_DB=${DB_NAME:-telegram_bot}
+#      - POSTGRES_USER=${DB_USER:-bot_user}
+#      - POSTGRES_PASSWORD=${DB_PASSWORD:-secure_password}
+#    volumes:
+#      - postgres_data:/var/lib/postgresql/data
+#    ports:
+#      - "5432:5432"
+#    healthcheck:
+#      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-bot_user}"]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 5
+
+# Redis service example (for caching/sessions)
+#  redis:
+#    image: redis:7-alpine
+#    container_name: telegram-bot-redis
+#    restart: unless-stopped
+#    ports:
+#      - "6379:6379"
+#    volumes:
+#      - redis_data:/data
+#    healthcheck:
+#      test: ["CMD", "redis-cli", "ping"]
+#      interval: 10s
+#      timeout: 3s
+#      retries: 3
+
+# Volumes for persistent data
+#volumes:
+#  postgres_data:
+#  redis_data:
+
+# Networks (optional - Docker Compose creates a default network)
+networks:
+  default:
+    name: telegram-bot-network
