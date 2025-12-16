@@ -35,8 +35,7 @@ cd rust-telegram-agent-template
 # Copy environment template
 cp .env.example .env
 
-# Edit configuration
-nano .env  # Add your bot token
+# IMPORTANT: Read step 3 carefully about which file to edit!
 ```
 
 **On Windows:**
@@ -48,18 +47,53 @@ cd rust-telegram-agent-template
 # Copy environment template
 copy .env.example .env
 
-# Edit configuration
-notepad .env
+# IMPORTANT: Read step 3 carefully about which file to edit!
 ```
 
 ### 3. Configure Your Bot
-Edit `.env` and add your bot token:
+
+**⚠️ IMPORTANT - Environment File Loading:**
+
+The bot uses environment-specific configuration files. By default, `DEPLOY_ENV=dev`, which means:
+- The bot loads `.env.dev` **first** (if it exists)
+- Then falls back to `.env` for any missing values
+
+**Choose ONE of these setup options:**
+
+**Option A (Recommended for development):**
+Edit `.env.dev` and add your bot token there:
+```bash
+# Linux/Mac
+nano .env.dev
+
+# Windows
+notepad .env.dev
+```
+Add your token to `.env.dev`:
+```bash
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+RUST_LOG=debug
+AI_ENABLED=false
+DATABASE_URL=sqlite:./dev_bot_database.db
+DEPLOY_ENV=dev
+```
+
+**Option B (Use main .env file):**
+Edit `.env` and change `DEPLOY_ENV` to `prod`:
+```bash
+# Linux/Mac
+nano .env
+
+# Windows  
+notepad .env
+```
+In `.env`, change:
 ```bash
 TELEGRAM_BOT_TOKEN=your_bot_token_here
 RUST_LOG=info
 AI_ENABLED=false
 DATABASE_URL=sqlite:./bot_database.db
-DEPLOY_ENV=dev
+DEPLOY_ENV=prod  # Changed from 'dev' to 'prod'
 ```
 
 ### 4. Build and Run
