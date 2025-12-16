@@ -60,29 +60,13 @@ impl Config {
     /// This method first loads environment-specific configuration files (e.g., .env.dev, .env.prod)
     /// based on the DEPLOY_ENV variable, then loads configuration from environment variables.
     pub fn from_env() -> ConfigResult<Self> {
-        // Load environment-specific configuration file first
-        let deploy_env = env::var("DEPLOY_ENV").unwrap_or_else(|_| "prod".to_string());
-        let env_file = format!(".env.{}", deploy_env);
-        
-        println!("DEBUG: DEPLOY_ENV = {}", deploy_env);
-        println!("DEBUG: Trying to load file: {}", env_file);
-        
-        match dotenv::from_filename(&env_file) {
-            Ok(_) => {
-                println!("DEBUG: Successfully loaded {}", env_file);
-                log::info!("✅ Successfully loaded {}", env_file);
-            },
-            Err(e) => {
-                println!("DEBUG: Failed to load {}: {}", env_file, e);
-                // Fallback to default .env file
-                println!("DEBUG: Trying to load .env as fallback");
-                if let Err(e2) = dotenv::dotenv() {
-                    println!("DEBUG: Failed to load .env: {}", e2);
-                    log::warn!("⚠️ No .env file found, using system environment variables only");
-                } else {
-                    println!("DEBUG: Successfully loaded .env as fallback");
-                }
-            }
+        // Load .env file (simple approach for template)
+        println!("DEBUG: Loading .env file");
+        if let Err(e) = dotenv::dotenv() {
+            println!("DEBUG: Failed to load .env: {}", e);
+            log::warn!("⚠️ No .env file found, using system environment variables only");
+        } else {
+            println!("DEBUG: Successfully loaded .env");
         }
         let bot_token = env::var("TELEGRAM_BOT_TOKEN")
             .map_err(|_| ConfigError::MissingVariable { 
@@ -117,6 +101,9 @@ impl Config {
             })?;
 
         let database_url = env::var("DATABASE_URL").ok();
+        
+        // Set deploy_env to a default value since we're using simple .env loading
+        let deploy_env = "prod".to_string();
 
         let config = Config {
             bot_token,
