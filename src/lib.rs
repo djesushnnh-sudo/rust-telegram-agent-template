@@ -1,29 +1,22 @@
 //! Telegram Bot Template Library
 //! 
-//! This library provides a clean, extensible foundation for building Telegram bots in Rust.
-//! It includes a modular architecture with clear separation of concerns and well-defined
-//! extension points for adding custom functionality.
+//! Enhanced with patterns from production Telegram bots, this library provides a robust,
+//! scalable foundation for building sophisticated Telegram bots in Rust. Features include
+//! concurrent state management, AI routing, and comprehensive database integration.
 
 // Core modules - these provide the essential bot functionality
-pub mod config;    // Configuration management with environment variable support
+pub mod config;    // Enhanced configuration with environment-specific files
 pub mod error;     // Comprehensive error handling and logging infrastructure
-pub mod commands;  // Extensible command handler system with built-in commands
-pub mod bot;       // Core bot service layer with Telegram API integration
-pub mod ai;        // AI router system with placeholder implementations
+pub mod commands;  // Modern command system using BotCommands derive macro
+pub mod state;     // Concurrent state management with DashMap
+pub mod ai;        // Enhanced AI router with session management
 
-// Optional modules for extended functionality
-// Uncomment and implement these modules as needed for your specific use case:
-// 
-// pub mod database;     // Database integration (PostgreSQL, SQLite, etc.)
-// pub mod middleware;   // Request/response middleware (rate limiting, auth, etc.)
-// pub mod services;     // External service integrations (weather, translation, etc.)
-// pub mod analytics;    // Usage analytics and metrics collection
-// pub mod cache;        // Caching layer for improved performance
-// pub mod webhooks;     // Webhook handling for external integrations
+// Database integration
+pub mod database;  // SQLite database adapter with state persistence
 
 // Re-export commonly used types for convenience
 pub use config::Config;
 pub use error::{BotError, BotResult};
-pub use bot::BotService;
-pub use commands::{CommandHandler, CommandRouter};
-pub use ai::{AIRouter, AIProcessor};
+pub use state::AppState;
+pub use commands::{BotCommand, CommandHandler};
+pub use ai::AIProcessor;

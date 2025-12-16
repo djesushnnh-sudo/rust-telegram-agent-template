@@ -20,6 +20,8 @@ fn test_config_validation_empty_token() {
         webhook_url: None,
         port: None,
         ai_enabled: false,
+        database_url: None,
+        deploy_env: "dev".to_string(),
     };
     
     let result = config.validate();
@@ -34,6 +36,8 @@ fn test_config_validation_token_without_colon() {
         webhook_url: None,
         port: None,
         ai_enabled: false,
+        database_url: None,
+        deploy_env: "dev".to_string(),
     };
     
     let result = config.validate();
@@ -55,6 +59,8 @@ fn test_config_validation_invalid_log_level() {
         webhook_url: None,
         port: None,
         ai_enabled: false,
+        database_url: None,
+        deploy_env: "dev".to_string(),
     };
     
     let result = config.validate();
@@ -76,6 +82,8 @@ fn test_config_validation_invalid_webhook_url_format() {
         webhook_url: Some("invalid_url_format".to_string()),
         port: None,
         ai_enabled: false,
+        database_url: None,
+        deploy_env: "dev".to_string(),
     };
     
     let result = config.validate();
@@ -96,6 +104,8 @@ fn test_config_validation_port_too_low() {
         webhook_url: None,
         port: Some(500), // Below 1024
         ai_enabled: false,
+        database_url: None,
+        deploy_env: "dev".to_string(),
     };
     
     let result = config.validate();
@@ -116,6 +126,8 @@ fn test_config_helper_methods() {
         webhook_url: Some("https://example.com/webhook".to_string()),
         port: Some(9000),
         ai_enabled: false,
+        database_url: None,
+        deploy_env: "dev".to_string(),
     };
     
     // Test helper methods
@@ -148,6 +160,8 @@ fn test_config_edge_case_whitespace_webhook() {
         webhook_url: Some("   ".to_string()), // Whitespace only
         port: None,
         ai_enabled: false,
+        database_url: None,
+        deploy_env: "dev".to_string(),
     };
     
     // This should fail validation because whitespace-only URLs are invalid
@@ -163,6 +177,8 @@ fn test_config_boundary_port_values() {
         webhook_url: None,
         port: Some(1024),
         ai_enabled: false,
+        database_url: None,
+        deploy_env: "dev".to_string(),
     };
     
     assert!(config.validate().is_ok());

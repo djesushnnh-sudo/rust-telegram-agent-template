@@ -47,51 +47,32 @@ pub struct Config {
     /// Enable AI processing (default: false)
     pub ai_enabled: bool,
     
-    // =========================================================================
-    // CUSTOM CONFIGURATION FIELDS
-    // =========================================================================
-    // Add your custom configuration fields here following the patterns above.
-    // 
-    // Remember to:
-    // 1. Document each field with /// comments
-    // 2. Use appropriate types (Option<T> for optional values)
-    // 3. Add corresponding environment variable loading in from_env()
-    // 4. Add validation in validate() if needed
-    // 5. Update .env.example with documentation
-    // 
-    // Examples:
-    // 
-    // /// Weather API key for OpenWeatherMap integration
-    // pub weather_api_key: Option<String>,
-    // 
-    // /// Enable weather command functionality
-    // pub enable_weather: bool,
-    // 
-    // /// Database connection URL for persistent storage
-    // pub database_url: Option<String>,
-    // 
-    // /// Maximum messages per minute per user (rate limiting)
-    // pub rate_limit_messages_per_minute: u32,
-    // ========================================================================
+    /// SQLite database URL for persistent storage
+    pub database_url: Option<String>,
+    
+    /// Deployment environment (dev, staging, prod)
+    pub deploy_env: String,
 }
 
 impl Config {
-    /// Load configuration from environment variables
+    /// Load configuration from environment variables and environment-specific files
     /// 
-    /// TODO: Add new configuration options here when extending the bot.
-    /// Follow the pattern of loading from environment variables with sensible defaults.
-    /// 
-    /// Example additions:
-    /// ```text
-    /// let database_url = env::var("DATABASE_URL").ok();
-    /// let weather_api_key = env::var("WEATHER_API_KEY").ok();
-    /// let openai_api_key = env::var("OPENAI_API_KEY").ok();
-    /// let rate_limit_enabled = env::var("RATE_LIMIT_ENABLED")
-    ///     .unwrap_or_else(|_| "true".to_string())
-    ///     .parse()
-    ///     .unwrap_or(true);
-    /// ```
+    /// This method first loads environment-specific configuration files (e.g., .env.dev, .env.prod)
+    /// based on the DEPLOY_ENV variable, then loads configuration from environment variables.
     pub fn from_env() -> ConfigResult<Self> {
+        // Load environment-specific configuration file first
+        let deploy_env = env::var("DEPLOY_ENV").unwrap_or_else(|_| "dev".to_string());
+        let env_file = format!(".env.{}", deploy_env);
+        
+        match dotenv::from_filename(&env_file) {
+            Ok(_) => log::info!("✅ Successfully loaded {}", env_file),
+            Err(_) => {
+                // Fallback to default .env file
+                if let Err(_) = dotenv::dotenv() {
+                    log::warn!("⚠️ No .env file found, using system environment variables only");
+                }
+            }
+        }
         let bot_token = env::var("TELEGRAM_BOT_TOKEN")
             .map_err(|_| ConfigError::MissingVariable { 
                 variable: "TELEGRAM_BOT_TOKEN".to_string() 
@@ -119,36 +100,7 @@ impl Config {
                 source: Box::new(e),
             })?;
 
-        // =====================================================================
-        // CUSTOM CONFIGURATION LOADING
-        // =====================================================================
-        // Load your custom configuration variables here.
-        // 
-        // Patterns for different types of configuration:
-        
-        // Optional string values (API keys, URLs, etc.)
-        // let weather_api_key = env::var("WEATHER_API_KEY").ok();
-        // let database_url = env::var("DATABASE_URL").ok();
-        
-        // Boolean flags with defaults
-        // let enable_weather = env::var("ENABLE_WEATHER")
-        //     .unwrap_or_else(|_| "false".to_string())
-        //     .parse()
-        //     .unwrap_or(false);
-        
-        // Numeric values with defaults and error handling
-        // let rate_limit_messages_per_minute = env::var("RATE_LIMIT_MESSAGES_PER_MINUTE")
-        //     .unwrap_or_else(|_| "10".to_string())
-        //     .parse()
-        //     .map_err(|e| ConfigError::ParseError {
-        //         variable: "RATE_LIMIT_MESSAGES_PER_MINUTE".to_string(),
-        //         source: Box::new(e),
-        //     })?;
-        
-        // String values with defaults
-        // let default_language = env::var("DEFAULT_LANGUAGE")
-        //     .unwrap_or_else(|_| "en".to_string());
-        // ====================================================================
+        let database_url = env::var("DATABASE_URL").ok();
 
         let config = Config {
             bot_token,
@@ -156,15 +108,8 @@ impl Config {
             webhook_url,
             port,
             ai_enabled,
-            // =================================================================
-            // Add your new configuration fields to the struct construction
-            // Make sure the field names match exactly what you defined above
-            // =================================================================
-            // weather_api_key,
-            // enable_weather,
-            // database_url,
-            // rate_limit_messages_per_minute,
-            // default_language,
+            database_url,
+            deploy_env,
         };
 
         config.validate()?;
@@ -248,6 +193,8 @@ impl Default for Config {
             webhook_url: None,
             port: Some(8080),
             ai_enabled: false,
+            database_url: None,
+            deploy_env: "dev".to_string(),
         }
     }
 }
@@ -265,6 +212,8 @@ mod tests {
             webhook_url: Some("https://example.com/webhook".to_string()),
             port: Some(8080),
             ai_enabled: false,
+            database_url: None,
+            deploy_env: "dev".to_string(),
         };
 
         assert!(config.validate().is_ok());
@@ -278,6 +227,8 @@ mod tests {
             webhook_url: None,
             port: Some(8080),
             ai_enabled: false,
+            database_url: None,
+            deploy_env: "dev".to_string(),
         };
 
         assert!(config.validate().is_err());
@@ -291,6 +242,8 @@ mod tests {
             webhook_url: None,
             port: Some(8080),
             ai_enabled: false,
+            database_url: None,
+            deploy_env: "dev".to_string(),
         };
 
         assert!(config.validate().is_err());
@@ -304,6 +257,8 @@ mod tests {
             webhook_url: Some("invalid_url".to_string()),
             port: Some(8080),
             ai_enabled: false,
+            database_url: None,
+            deploy_env: "dev".to_string(),
         };
 
         assert!(config.validate().is_err());
@@ -317,6 +272,8 @@ mod tests {
             webhook_url: None,
             port: Some(100), // Invalid port (too low)
             ai_enabled: false,
+            database_url: None,
+            deploy_env: "dev".to_string(),
         };
 
         assert!(config.validate().is_err());

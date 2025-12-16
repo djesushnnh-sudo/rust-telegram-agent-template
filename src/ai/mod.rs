@@ -34,7 +34,9 @@ impl AIRouter {
     /// # Returns
     /// A new AIRouter instance
     pub fn new(enabled: bool, api_key: Option<String>) -> Self {
-        let processor = AIProcessor::new(enabled, api_key);
+        // Create a default state for the processor
+        let state = std::sync::Arc::new(crate::state::AppState::new());
+        let processor = AIProcessor::new(enabled, api_key, state);
         Self { 
             enabled,
             processor,

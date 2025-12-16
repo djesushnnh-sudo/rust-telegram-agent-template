@@ -68,9 +68,9 @@ impl Migrator {
         }
     }
     
-    /// Migration to version 1: Create initial tables
+    /// Migration to version 1: Create initial tables with enhanced schema
     async fn migrate_to_v1(&self) -> Result<()> {
-        debug!("Applying migration v1: Initial schema");
+        debug!("Applying migration v1: Enhanced schema with state management");
         
         // Create users table
         sqlx::query(
@@ -85,20 +85,66 @@ impl Migrator {
         )
         .execute(&self.pool)
         .await?;
-        
-        // Create index on telegram_id
+
+        // Create managed_groups table (based on Dads2Dads patterns)
         sqlx::query(
-            "CREATE INDEX IF NOT EXISTS idx_users_telegram_id ON users(telegram_id)"
+            r#"
+            CREATE TABLE IF NOT EXISTS managed_groups (
+                chat_id INTEGER PRIMARY KEY,
+                group_name TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+            "#,
         )
         .execute(&self.pool)
         .await?;
+
+        // Create forwarded_messages table (based on Dads2Dads patterns)
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS forwarded_messages (
+                admin_msg_id INTEGER PRIMARY KEY,
+                original_chat_id INTEGER NOT NULL,
+                original_msg_id INTEGER NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+            "#,
+        )
+        .execute(&self.pool)
+        .await?;
+
+        // Create user_preferences table (for AI settings)
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS user_preferences (
+                user_id INTEGER PRIMARY KEY,
+                ai_enabled BOOLEAN DEFAULT FALSE,
+                language TEXT DEFAULT 'en',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+            "#,
+        )
+        .execute(&self.pool)
+        .await?;
+        
+        // Create indexes for performance
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_users_telegram_id ON users(telegram_id)")
+            .execute(&self.pool).await?;
+        
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_forwarded_messages_original ON forwarded_messages(original_chat_id, original_msg_id)")
+            .execute(&self.pool).await?;
+        
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_forwarded_messages_created ON forwarded_messages(created_at)")
+            .execute(&self.pool).await?;
         
         // Mark migration as applied
         sqlx::query("INSERT INTO schema_migrations (version) VALUES (1)")
             .execute(&self.pool)
             .await?;
             
-        info!("Migration v1 applied successfully");
+        info!("Migration v1 applied successfully - Enhanced schema with state management");
         Ok(())
     }
 }

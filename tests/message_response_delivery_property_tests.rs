@@ -1,8 +1,6 @@
 use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
-use telegram_bot_template::bot::BotService;
 use telegram_bot_template::config::Config;
-use telegram_bot_template::error::BotResult;
 
 /// **Feature: telegram-bot-template, Property 7: Message Response Delivery**
 /// **Validates: Requirements 2.4**
@@ -54,6 +52,8 @@ fn create_test_config() -> Config {
         webhook_url: None,
         port: Some(8080),
         ai_enabled: false,
+        database_url: None,
+        deploy_env: "dev".to_string(),
     }
 }
 
@@ -164,31 +164,19 @@ fn prop_message_length_limits_enforced(message_len: u16) -> TestResult {
     TestResult::from_bool(is_valid == expected_valid)
 }
 
-// Property test: Bot service message sending interface exists
+// Property test: Message delivery validation works correctly
 #[quickcheck]
-fn prop_bot_service_send_interface_exists(chat_id: i64, message: String) -> TestResult {
-    // Skip invalid inputs
+fn prop_message_delivery_validation(chat_id: i64, message: String) -> TestResult {
+    // Skip invalid inputs for focused testing
     if chat_id == 0 || message.is_empty() || message.len() > 4096 {
         return TestResult::discard();
     }
     
-    // Test that the bot service has the expected interface
-    // Note: We can't actually send messages without a real bot token,
-    // but we can verify the interface exists and compiles
+    // Test that message delivery validation works correctly
+    let response = TestResponse::new(chat_id, message);
     
-    let rt = tokio::runtime::Runtime::new().unwrap();
-    
-    rt.block_on(async {
-        let config = create_test_config();
-        
-        // The BotService should have a send_message method
-        // We can't test actual sending without a real token, but we can
-        // verify the method signature exists by attempting to call it
-        // (it will fail with authentication error, but that's expected)
-        
-        // This test mainly verifies that the interface is correctly defined
-        TestResult::passed()
-    })
+    // Valid inputs should result in deliverable responses
+    TestResult::from_bool(response.can_be_delivered())
 }
 
 #[cfg(test)]

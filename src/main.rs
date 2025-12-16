@@ -1,170 +1,167 @@
 use anyhow::Result;
 use log::{info, error};
 use tokio::signal;
+use std::sync::Arc;
+use teloxide::prelude::*;
+use teloxide::utils::command::BotCommands;
 
 // Import all the modules we need for bot operation
 use telegram_bot_template::config::Config;
-use telegram_bot_template::bot::BotService;
-use telegram_bot_template::commands::{StartCommand, HelpCommand, EchoCommand, StatusCommand};
+use telegram_bot_template::state::AppState;
+use telegram_bot_template::commands::{BotCommand, CommandHandler};
+use telegram_bot_template::ai::AIProcessor;
 use telegram_bot_template::error::LoggingConfig;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Initialize logging first
+    // Load configuration and environment-specific files first (like Dads2Dads)
+    let config = match Config::from_env() {
+        Ok(config) => {
+            println!("✅ Configuration loaded successfully");
+            config
+        }
+        Err(e) => {
+            eprintln!("❌ Failed to load configuration: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    // Initialize logging after loading config (so RUST_LOG is available)
     if let Err(e) = LoggingConfig::init() {
         eprintln!("Failed to initialize logging: {}", e);
         std::process::exit(1);
     }
     
-    info!("Starting Telegram Bot Template");
+    info!("🚀 Starting Telegram Bot Template...");
     
-    // Load and validate configuration from environment variables
-    let config = match Config::from_env() {
-        Ok(config) => {
-            info!("Configuration loaded successfully");
-            config
-        }
-        Err(e) => {
-            error!("Failed to load configuration: {}", e);
-            return Err(e.into());
-        }
-    };
+    // Validate bot token
+    let bot_token = config.bot_token.clone();
+    if bot_token.is_empty() {
+        error!("❌ FATAL: TELEGRAM_BOT_TOKEN is not set");
+        error!("Please set TELEGRAM_BOT_TOKEN in your environment or .env file");
+        std::process::exit(1);
+    }
+
+    // Initialize shared application state
+    let state = Arc::new(AppState::new());
     
-    // Initialize bot service with configuration
-    let mut bot_service = match BotService::new(&config).await {
-        Ok(service) => {
-            info!("Bot service initialized successfully");
-            service
-        }
-        Err(e) => {
-            error!("Failed to initialize bot service: {}", e);
-            return Err(e.into());
-        }
-    };
+    // Load data from database on startup (like Dads2Dads loads from Airtable)
+    info!("📥 Loading persistent data...");
+    if let Err(e) = state.load_from_database().await {
+        error!("❌ Failed to load data from database: {}", e);
+        error!("⚠️ Continuing with empty state. Data will not persist across restarts.");
+    }
+
+    // Initialize bot
+    let bot = Bot::new(bot_token);
     
-    // Register built-in command handlers
-    register_commands(&mut bot_service, &config).await?;
-    
+    // Initialize AI processor with state
+    let ai_processor = Arc::new(AIProcessor::new(
+        config.ai_enabled,
+        None, // TODO: Add AI API key to config
+        state.clone(),
+    ));
+
+    // Initialize command handler with state
+    let command_handler = Arc::new(CommandHandler::new(state.clone()));
+
+    // Create message handler using Dads2Dads patterns
+    let handler = create_message_handler(command_handler.clone(), ai_processor.clone(), state.clone());
+
+    info!("🤖 Bot initialized successfully");
+    info!("📋 Available commands: {}", BotCommand::descriptions());
+
+    // Create dispatcher
+    let mut dispatcher = Dispatcher::builder(bot, handler).build();
+
     // Set up graceful shutdown handling
     let shutdown_signal = setup_shutdown_signal();
     
-    info!("Bot initialization complete, starting main loop");
+    info!("✅ Bot initialization complete, starting dispatcher...");
     
     // Start the bot with graceful shutdown handling
     tokio::select! {
-        result = bot_service.start() => {
-            match result {
-                Ok(()) => {
-                    info!("Bot stopped normally");
-                }
-                Err(e) => {
-                    error!("Bot stopped with error: {}", e);
-                    return Err(e.into());
-                }
-            }
+        _ = dispatcher.dispatch() => {
+            info!("Bot dispatcher exited");
         }
         _ = shutdown_signal => {
             info!("Shutdown signal received, stopping bot gracefully");
-            if let Err(e) = bot_service.shutdown().await {
-                error!("Error during shutdown: {}", e);
-            }
         }
     }
     
-    info!("Telegram Bot Template shutdown complete");
+    // Save state before shutdown
+    info!("💾 Saving state before shutdown...");
+    if let Err(e) = state.save_to_database().await {
+        error!("❌ Failed to save state: {}", e);
+    }
+    
+    info!("✅ Telegram Bot Template shutdown complete");
     Ok(())
 }
 
-/// Register all built-in command handlers with the bot service
+/// Create message handler using Dads2Dads patterns
 /// 
-/// This function demonstrates the command registration pattern and serves as the
-/// central location for adding new commands to your bot.
-/// 
-/// ## Adding Custom Commands
-/// 
-/// To add a new command to your bot:
-/// 
-/// 1. **Create the command file** in `src/commands/` (e.g., `weather.rs`)
-/// 2. **Implement the CommandHandler trait** for your command struct
-/// 3. **Export the command** in `src/commands/mod.rs`
-/// 4. **Register it here** following the patterns below
-/// 
-/// ### Example Command Registrations:
-/// 
-/// ```rust
-/// // Simple command without configuration
-/// router.register_command("weather", Box::new(WeatherCommand::new()));
-/// 
-/// // Command that needs API key from configuration
-/// if let Some(api_key) = &config.weather_api_key {
-///     router.register_command("weather", Box::new(WeatherCommand::new(api_key.clone())));
-/// }
-/// 
-/// // Command with conditional registration based on feature flags
-/// if config.enable_ai_chat {
-///     router.register_command("chat", Box::new(AIChatCommand::new(&config)));
-/// }
-/// 
-/// // Command that needs database access
-/// if let Some(db_pool) = &database_pool {
-///     router.register_command("profile", Box::new(ProfileCommand::new(db_pool.clone())));
-/// }
-/// ```
-/// 
-/// ### Command Categories to Consider:
-/// 
-/// - **Utility Commands**: `/weather`, `/translate`, `/qr`, `/shorten`
-/// - **Information Commands**: `/news`, `/define`, `/search`, `/wiki`
-/// - **Interactive Commands**: `/poll`, `/quiz`, `/game`, `/remind`
-/// - **AI Commands**: `/chat`, `/ask`, `/summarize`, `/explain`
-/// - **Admin Commands**: `/stats`, `/users`, `/broadcast`, `/maintenance`
-async fn register_commands(bot_service: &mut BotService, _config: &Config) -> Result<()> {
-    info!("Registering built-in commands");
-    
-    let router = bot_service.command_router_mut();
-    
-    // Register core commands - these serve as examples for creating new commands
-    router.register_command("start", Box::new(StartCommand::new()));
-    router.register_command("help", Box::new(HelpCommand::new()));
-    router.register_command("echo", Box::new(EchoCommand::new()));
-    router.register_command("status", Box::new(StatusCommand::new()));
-    
-    // =========================================================================
-    // CUSTOM COMMAND REGISTRATION
-    // =========================================================================
-    // Add your custom commands here following the patterns above.
-    // 
-    // Uncomment and modify these examples as needed:
-    
-    // Example: Weather command (requires API key)
-    // if let Some(api_key) = std::env::var("WEATHER_API_KEY").ok() {
-    //     router.register_command("weather", Box::new(WeatherCommand::new(api_key)));
-    // }
-    
-    // Example: AI chat command (requires AI to be enabled)
-    // if config.ai_enabled {
-    //     router.register_command("chat", Box::new(AIChatCommand::new()));
-    // }
-    
-    // Example: Database-dependent command
-    // if let Some(db_pool) = &database_pool {
-    //     router.register_command("profile", Box::new(ProfileCommand::new(db_pool.clone())));
-    //     router.register_command("settings", Box::new(SettingsCommand::new(db_pool.clone())));
-    // }
-    
-    // Example: Admin-only commands
-    // router.register_command("stats", Box::new(StatsCommand::new()));
-    // router.register_command("broadcast", Box::new(BroadcastCommand::new()));
-    
-    // =========================================================================
-    
-    info!("Registered {} commands", router.command_count());
-    
-    // Log available commands for debugging
-    let commands = router.get_registered_commands();
-    info!("Available commands: {}", commands.join(", "));
-    
-    Ok(())
+/// This creates a sophisticated message handler that separates commands from regular messages,
+/// similar to the dual-bot pattern in Dads2Dads but simplified for a single bot template.
+fn create_message_handler(
+    command_handler: Arc<CommandHandler>,
+    ai_processor: Arc<AIProcessor>,
+    state: Arc<AppState>,
+) -> teloxide::dispatching::UpdateHandler<teloxide::RequestError> {
+    use teloxide::dptree;
+
+    // Clone handlers for use in closures
+    let command_handler_for_commands = command_handler.clone();
+    let command_handler_for_messages = command_handler.clone();
+    let ai_processor_for_messages = ai_processor.clone();
+
+    // Create handler branches similar to Dads2Dads
+    dptree::entry()
+        // Handle commands with type-safe parsing
+        .branch(
+            Update::filter_message()
+                .filter_command::<BotCommand>()
+                .endpoint(move |bot: Bot, msg: Message, cmd: BotCommand| {
+                    let handler = command_handler_for_commands.clone();
+                    async move {
+                        if let Err(e) = handler.handle_command(bot, msg, cmd).await {
+                            log::error!("Command handling error: {}", e);
+                        }
+                        teloxide::prelude::ResponseResult::Ok(())
+                    }
+                })
+        )
+        // Handle regular messages (for AI routing or general responses)
+        .branch(
+            Update::filter_message()
+                .endpoint(move |bot: Bot, msg: Message| {
+                    let handler = command_handler_for_messages.clone();
+                    let ai = ai_processor_for_messages.clone();
+                    async move {
+                        // Check if message should go to AI
+                        if ai.should_process_with_ai(&msg).await {
+                            // Route to AI processor
+                            match ai.process_message_with_state(&msg).await {
+                                Ok(response) => {
+                                    if let Err(e) = bot.send_message(msg.chat.id, response).await {
+                                        log::error!("Failed to send AI response: {}", e);
+                                    }
+                                }
+                                Err(e) => {
+                                    log::error!("AI processing error: {}", e);
+                                    let _ = bot.send_message(msg.chat.id, "Sorry, I encountered an error processing your message.").await;
+                                }
+                            }
+                        } else {
+                            // Handle as regular message
+                            if let Err(e) = handler.handle_message(bot, msg).await {
+                                log::error!("Message handling error: {}", e);
+                            }
+                        }
+                        teloxide::prelude::ResponseResult::Ok(())
+                    }
+                })
+        )
 }
 
 /// Set up graceful shutdown signal handling

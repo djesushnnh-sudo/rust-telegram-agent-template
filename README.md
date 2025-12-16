@@ -4,15 +4,17 @@ A clean, extensible foundation for building Telegram bots in Rust. This template
 
 ## ✨ Features
 
-- **🏗️ Clean Architecture**: Modular design with clear separation of concerns and well-defined interfaces
-- **⚡ Command System**: Simple, extensible command handling with built-in commands and automatic routing
-- **⚙️ Configuration Management**: Environment-based configuration with validation and error reporting
-- **🤖 AI-Ready**: Designated placeholder system for seamless AI service integration
-- **🛡️ Error Handling**: Comprehensive error handling, recovery mechanisms, and user-friendly messages
-- **📚 Documentation**: Extensive documentation, inline comments, and examples for easy extension
-- **🧪 Testing**: Property-based testing framework with comprehensive test coverage
-- **🐳 Docker Support**: Ready-to-use Docker configuration for easy deployment
-- **🔒 Security**: Input validation, rate limiting support, and secure configuration management
+- **🏗️ Production-Ready Architecture**: Based on patterns from real production bots with concurrent state management
+- **⚡ Modern Command System**: Type-safe command handling using BotCommands derive macro
+- **⚙️ Environment-Specific Configuration**: Support for .env.dev, .env.prod files like production systems
+- **🗄️ SQLite Database Integration**: Persistent storage with automatic migrations and state management
+- **🤖 Enhanced AI Router**: Sophisticated message routing with session management and conversation context
+- **🔄 Concurrent State Management**: Thread-safe state using DashMap for high-performance concurrent access
+- **🛡️ Comprehensive Error Handling**: Production-grade error handling with graceful degradation
+- **📚 Extensive Documentation**: Complete guides, inline comments, and real-world examples
+- **🧪 Property-Based Testing**: Comprehensive test coverage with correctness validation
+- **🐳 Docker Support**: Multi-stage builds with development and production configurations
+- **🔒 Security & Performance**: Input validation, rate limiting, and optimized for production use
 
 ## 🚀 Quick Start
 
@@ -41,6 +43,8 @@ Edit `.env` and add your bot token:
 TELEGRAM_BOT_TOKEN=your_bot_token_here
 RUST_LOG=info
 AI_ENABLED=false
+DATABASE_URL=sqlite:./bot_database.db
+DEPLOY_ENV=dev
 ```
 
 ### 4. Build and Run
@@ -107,6 +111,18 @@ The bot uses environment variables for configuration. Copy `.env.example` to `.e
 ```bash
 # Your bot token from @BotFather (REQUIRED)
 TELEGRAM_BOT_TOKEN=your_bot_token_here
+
+# SQLite database for persistent storage (REQUIRED)
+DATABASE_URL=sqlite:./bot_database.db
+```
+
+### Environment-Specific Configuration
+```bash
+# Deployment environment (affects which .env file is loaded)
+DEPLOY_ENV=dev                   # Options: dev, staging, prod
+
+# The bot will load .env.{DEPLOY_ENV} first, then fall back to .env
+# This allows different configurations for different environments
 ```
 
 ### Optional Configuration
@@ -121,17 +137,9 @@ BOT_PORT=8080                    # Port for webhook server
 # Feature toggles
 AI_ENABLED=false                 # Enable AI processing capabilities
 
-# Database configuration (optional)
-DATABASE_URL=                    # PostgreSQL connection string
-DATABASE_MAX_CONNECTIONS=10      # Maximum database connections
-
 # External API keys (optional)
-WEATHER_API_KEY=                 # OpenWeatherMap API key
 OPENAI_API_KEY=                  # OpenAI API key for AI features
-
-# Rate limiting (optional)
-RATE_LIMIT_ENABLED=true          # Enable rate limiting
-RATE_LIMIT_MESSAGES_PER_MINUTE=10 # Messages per minute per user
+ANTHROPIC_API_KEY=               # Anthropic Claude API key
 ```
 
 See the [Setup Guide](docs/SETUP.md) for detailed configuration instructions.

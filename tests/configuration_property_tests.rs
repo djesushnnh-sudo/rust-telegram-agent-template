@@ -91,6 +91,8 @@ fn property_configuration_validation_completeness(
         webhook_url: webhook_url.clone(),
         port,
         ai_enabled: false, // This field is always valid
+        database_url: None,
+        deploy_env: "dev".to_string(),
     };
 
     let validation_result = config.validate();

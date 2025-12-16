@@ -7,12 +7,13 @@
 use anyhow::Result;
 use teloxide::types::{Message, UserId, ChatId};
 use log::{info, debug, warn};
+use crate::state::AppState;
+use std::sync::Arc;
 
 /// AI Message Processor for handling AI-powered responses
 /// 
-/// This struct provides placeholder implementations for AI message processing.
-/// Replace these implementations with actual AI service calls when integrating
-/// real AI functionality.
+/// Enhanced with state management and session tracking based on Dads2Dads patterns.
+/// This processor integrates with the shared application state for user session management.
 pub struct AIProcessor {
     /// Whether AI processing is enabled
     enabled: bool,
@@ -22,6 +23,9 @@ pub struct AIProcessor {
     
     /// Model configuration (placeholder)
     model_config: ModelConfig,
+    
+    /// Shared application state for session management
+    state: Arc<AppState>,
 }
 
 /// Configuration for AI model parameters
@@ -93,19 +97,21 @@ pub enum ResponseStyle {
 }
 
 impl AIProcessor {
-    /// Create a new AI processor instance
+    /// Create a new AI processor instance with state management
     /// 
     /// # Arguments
     /// * `enabled` - Whether AI processing is enabled
     /// * `api_key` - Optional API key for AI services
+    /// * `state` - Shared application state
     /// 
     /// # Returns
     /// A new AIProcessor instance
-    pub fn new(enabled: bool, api_key: Option<String>) -> Self {
+    pub fn new(enabled: bool, api_key: Option<String>, state: Arc<AppState>) -> Self {
         Self {
             enabled,
             api_key,
             model_config: ModelConfig::default(),
+            state,
         }
     }
     
@@ -115,14 +121,16 @@ impl AIProcessor {
     /// * `enabled` - Whether AI processing is enabled
     /// * `api_key` - Optional API key for AI services
     /// * `model_config` - Custom model configuration
+    /// * `state` - Shared application state
     /// 
     /// # Returns
     /// A new AIProcessor instance with custom configuration
-    pub fn with_config(enabled: bool, api_key: Option<String>, model_config: ModelConfig) -> Self {
+    pub fn with_config(enabled: bool, api_key: Option<String>, model_config: ModelConfig, state: Arc<AppState>) -> Self {
         Self {
             enabled,
             api_key,
             model_config,
+            state,
         }
     }
     
@@ -237,10 +245,10 @@ impl AIProcessor {
         Ok(response)
     }
     
-    /// Determine if a message should be processed by AI
+    /// Enhanced AI routing decision based on user session and message context
     /// 
-    /// This function implements the routing logic to decide whether
-    /// a message should go through AI processing or regular command handling.
+    /// This function implements sophisticated routing logic using the shared state
+    /// to make intelligent decisions about AI processing.
     /// 
     /// # Arguments
     /// * `message` - The Telegram message to evaluate
@@ -262,74 +270,56 @@ impl AIProcessor {
         if text.starts_with('/') {
             return false;
         }
-        
-        // =====================================================================
-        // AI ROUTING LOGIC CUSTOMIZATION
-        // =====================================================================
-        // Implement sophisticated routing logic here to determine when messages
-        // should be processed by AI vs regular commands.
-        // 
-        // Common routing criteria to consider:
+
+        // Get user session to check AI preferences
+        let user_id = match message.from() {
+            Some(user) => user.id,
+            None => return false,
+        };
+
+        let chat_id = message.chat.id;
+        let session = self.state.get_or_create_session(user_id, chat_id);
+
+        // Check if AI is enabled for this user
+        if !session.ai_enabled {
+            return false;
+        }
+
+        // Enhanced routing logic based on Dads2Dads patterns
         
         // Message length thresholds
-        // if text.len() < 10 || text.len() > 1000 {
-        //     return false; // Too short or too long for AI processing
-        // }
-        
+        if text.len() < 3 || text.len() > 2000 {
+            return false; // Too short or too long for AI processing
+        }
+
         // Keyword detection for AI-appropriate content
-        // let ai_keywords = ["explain", "help me", "what is", "how do", "why"];
-        // let should_use_ai = ai_keywords.iter()
-        //     .any(|keyword| text.to_lowercase().contains(keyword));
-        
-        // User preferences (requires database integration)
-        // if let Some(user_prefs) = self.get_user_preferences(user_id).await {
-        //     if !user_prefs.ai_enabled {
-        //         return false;
-        //     }
-        // }
-        
-        // Chat type considerations
-        // match message.chat.kind {
-        //     teloxide::types::ChatKind::Private(_) => true,  // AI in private chats
-        //     teloxide::types::ChatKind::Group(_) => false,   // No AI in groups
-        //     teloxide::types::ChatKind::Supergroup(_) => {
-        //         // AI only if bot is mentioned in supergroups
-        //         text.contains("@your_bot_username")
-        //     }
-        // }
-        
-        // Time-based rules (e.g., AI only during certain hours)
-        // let current_hour = chrono::Utc::now().hour();
-        // if current_hour < 6 || current_hour > 22 {
-        //     return false; // No AI during night hours
-        // }
-        
-        // User role or permissions
-        // if self.is_premium_user(user_id).await {
-        //     return true; // Premium users always get AI
-        // }
-        // ====================================================================
-        
-        // Placeholder routing logic
-        // In a real implementation, you might check:
-        // - User has opted into AI features
-        // - Message contains natural language (not just emojis/links)
-        // - Chat allows AI processing
-        // - Rate limiting considerations
-        
-        true // For now, process all non-command messages with AI
+        let ai_keywords = ["explain", "help me", "what is", "how do", "why", "tell me", "can you"];
+        let has_ai_keywords = ai_keywords.iter()
+            .any(|keyword| text.to_lowercase().contains(keyword));
+
+        // Chat type considerations (similar to Dads2Dads dual-bot pattern)
+        let chat_allows_ai = match message.chat.kind {
+            teloxide::types::ChatKind::Private(_) => true,  // AI in private chats
+            teloxide::types::ChatKind::Public(_) => {
+                // AI only if bot is mentioned in public chats or has AI keywords
+                has_ai_keywords || text.to_lowercase().contains("bot")
+            }
+        };
+
+        // Only process if chat allows AI and message seems appropriate
+        chat_allows_ai && (has_ai_keywords || text.len() > 20)
     }
     
-    /// Create AI context from a Telegram message
+    /// Create AI context from a Telegram message using shared state
     /// 
-    /// This helper function extracts relevant context information
-    /// from a Telegram message for AI processing.
+    /// This enhanced version uses the shared application state to provide
+    /// rich context information for AI processing.
     /// 
     /// # Arguments
     /// * `message` - The Telegram message
     /// 
     /// # Returns
-    /// AIContext with extracted information
+    /// AIContext with extracted information from state
     pub fn create_context_from_message(&self, message: &Message) -> AIContext {
         let user_id = message.from()
             .map(|user| user.id)
@@ -337,33 +327,21 @@ impl AIProcessor {
         
         let chat_id = message.chat.id;
         
-        // =====================================================================
-        // CONTEXT ENHANCEMENT OPPORTUNITIES
-        // =====================================================================
-        // Enhance AI context with additional information for better responses.
+        // Get user session from state
+        let session = self.state.get_or_create_session(user_id, chat_id);
         
-        // Session management (requires database or cache)
-        let session_id = Some(format!("session_{}_{}", user_id, chat_id));
-        // Advanced session management:
-        // let session_id = self.session_manager.get_or_create_session(user_id, chat_id).await;
+        // Use session ID from state
+        let session_id = Some(session.session_id.clone());
         
-        // Message history retrieval (requires database)
-        let message_history = Vec::new();
-        // Advanced history retrieval:
-        // let message_history = self.db.get_recent_messages(chat_id, 10).await
-        //     .unwrap_or_default();
+        // Get conversation history from state
+        let message_history = session.conversation_context.clone();
         
-        // User preferences loading (requires database)
-        let user_preferences = None;
-        // Advanced preferences:
-        // let user_preferences = self.db.get_user_preferences(user_id).await
-        //     .ok()
-        //     .map(|prefs| UserPreferences {
-        //         language: prefs.language,
-        //         style: prefs.response_style,
-        //         max_response_length: prefs.max_length,
-        //     });
-        // ====================================================================
+        // Create user preferences from session data
+        let user_preferences = Some(UserPreferences {
+            language: "en".to_string(), // TODO: Get from user settings
+            style: ResponseStyle::Friendly,
+            max_response_length: Some(500),
+        });
         
         AIContext {
             user_id,
@@ -371,6 +349,46 @@ impl AIProcessor {
             session_id,
             message_history,
             user_preferences,
+        }
+    }
+
+    /// Process a message with full state integration
+    /// 
+    /// This method integrates with the shared state to provide enhanced
+    /// AI processing with session management and conversation context.
+    pub async fn process_message_with_state(&self, message: &Message) -> Result<String> {
+        let text = message.text().unwrap_or("");
+        let user_id = message.from().map(|u| u.id).unwrap_or(UserId(0));
+        
+        // Add message to conversation context
+        self.state.add_to_conversation_context(user_id, text.to_string());
+        
+        // Create context from message and state
+        let context = self.create_context_from_message(message);
+        
+        // Process with AI
+        self.process_message(text, &context).await
+    }
+
+    /// Enable AI for a specific user
+    pub fn enable_ai_for_user(&self, user_id: UserId, chat_id: ChatId) {
+        if let Some(mut session) = self.state.user_sessions.get_mut(&user_id) {
+            session.ai_enabled = true;
+            log::info!("AI enabled for user {}", user_id);
+        } else {
+            // Create new session with AI enabled
+            let mut session = self.state.get_or_create_session(user_id, chat_id);
+            session.ai_enabled = true;
+            self.state.user_sessions.insert(user_id, session);
+            log::info!("Created new AI-enabled session for user {}", user_id);
+        }
+    }
+
+    /// Disable AI for a specific user
+    pub fn disable_ai_for_user(&self, user_id: UserId) {
+        if let Some(mut session) = self.state.user_sessions.get_mut(&user_id) {
+            session.ai_enabled = false;
+            log::info!("AI disabled for user {}", user_id);
         }
     }
     
@@ -408,7 +426,8 @@ mod tests {
     
     #[tokio::test]
     async fn test_ai_processor_disabled() {
-        let processor = AIProcessor::new(false, None);
+        let state = Arc::new(AppState::new());
+        let processor = AIProcessor::new(false, None, state);
         let context = AIContext {
             user_id: UserId(12345),
             chat_id: ChatId(67890),
@@ -423,7 +442,8 @@ mod tests {
     
     #[tokio::test]
     async fn test_ai_processor_not_ready() {
-        let processor = AIProcessor::new(true, None); // Enabled but no API key
+        let state = Arc::new(AppState::new());
+        let processor = AIProcessor::new(true, None, state); // Enabled but no API key
         let context = AIContext {
             user_id: UserId(12345),
             chat_id: ChatId(67890),
@@ -438,7 +458,8 @@ mod tests {
     
     #[tokio::test]
     async fn test_ai_processor_ready() {
-        let processor = AIProcessor::new(true, Some("test_api_key".to_string()));
+        let state = Arc::new(AppState::new());
+        let processor = AIProcessor::new(true, Some("test_api_key".to_string()), state);
         let context = AIContext {
             user_id: UserId(12345),
             chat_id: ChatId(67890),
@@ -453,9 +474,10 @@ mod tests {
     
     #[test]
     fn test_is_ready() {
-        let processor_disabled = AIProcessor::new(false, Some("key".to_string()));
-        let processor_no_key = AIProcessor::new(true, None);
-        let processor_ready = AIProcessor::new(true, Some("key".to_string()));
+        let state = Arc::new(AppState::new());
+        let processor_disabled = AIProcessor::new(false, Some("key".to_string()), state.clone());
+        let processor_no_key = AIProcessor::new(true, None, state.clone());
+        let processor_ready = AIProcessor::new(true, Some("key".to_string()), state.clone());
         
         assert!(!processor_disabled.is_ready());
         assert!(!processor_no_key.is_ready());
@@ -480,14 +502,16 @@ mod tests {
             system_prompt: "Custom prompt".to_string(),
         };
         
-        let processor = AIProcessor::with_config(true, Some("key".to_string()), custom_config.clone());
+        let state = Arc::new(AppState::new());
+        let processor = AIProcessor::with_config(true, Some("key".to_string()), custom_config.clone(), state);
         assert!(processor.is_ready());
         assert_eq!(processor.model_config.model_name, "custom-model");
     }
     
     #[test]
     fn test_set_api_key() {
-        let mut processor = AIProcessor::new(true, None);
+        let state = Arc::new(AppState::new());
+        let mut processor = AIProcessor::new(true, None, state);
         assert!(!processor.is_ready());
         
         processor.set_api_key(Some("new_key".to_string()));
@@ -499,7 +523,8 @@ mod tests {
     
     #[test]
     fn test_update_config() {
-        let mut processor = AIProcessor::new(true, Some("key".to_string()));
+        let state = Arc::new(AppState::new());
+        let mut processor = AIProcessor::new(true, Some("key".to_string()), state);
         
         let new_config = ModelConfig {
             model_name: "updated-model".to_string(),
