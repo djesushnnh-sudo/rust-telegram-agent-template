@@ -42,11 +42,20 @@ async fn main() -> Result<()> {
         std::process::exit(1);
     }
 
-    // Initialize shared application state
-    let state = Arc::new(AppState::new());
+    // Initialize shared application state with database configuration
+    let state = match AppState::from_config(&config).await {
+        Ok(state) => {
+            info!("✅ Application state initialized successfully");
+            Arc::new(state)
+        }
+        Err(e) => {
+            error!("❌ Failed to initialize application state: {}", e);
+            error!("⚠️ Falling back to memory-only mode");
+            Arc::new(AppState::new())
+        }
+    };
     
-    // Load data from database on startup (like Dads2Dads loads from Airtable)
-    info!("📥 Loading persistent data...");
+    // Load data from database on startup
     if let Err(e) = state.load_from_database().await {
         error!("❌ Failed to load data from database: {}", e);
         error!("⚠️ Continuing with empty state. Data will not persist across restarts.");

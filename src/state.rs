@@ -2,6 +2,7 @@ use dashmap::DashMap;
 use std::sync::Arc;
 use teloxide::types::{ChatId, MessageId, UserId};
 use uuid::Uuid;
+use crate::database::{DatabaseProvider, DatabaseManager, DatabaseConfig};
 
 /// Application state using concurrent data structures
 /// 
@@ -24,6 +25,10 @@ pub struct AppState {
     /// Temporary storage for any pending operations or proposals
     /// Key: Operation ID, Value: Operation data
     pub pending_operations: Arc<DashMap<String, PendingOperation>>,
+    
+    /// Optional database provider for persistence
+    /// If None, all data is kept in memory only
+    pub database: Option<Arc<dyn DatabaseProvider>>,
 }
 
 /// User session data for AI routing and conversation context
@@ -49,13 +54,42 @@ pub struct PendingOperation {
 }
 
 impl AppState {
-    /// Create a new application state instance
+    /// Create a new application state instance without database
     pub fn new() -> Self {
         Self {
             forwarded_messages: Arc::new(DashMap::new()),
             managed_groups: Arc::new(DashMap::new()),
             user_sessions: Arc::new(DashMap::new()),
             pending_operations: Arc::new(DashMap::new()),
+            database: None,
+        }
+    }
+    
+    /// Create a new application state instance with database
+    pub fn with_database(database: Arc<dyn DatabaseProvider>) -> Self {
+        Self {
+            forwarded_messages: Arc::new(DashMap::new()),
+            managed_groups: Arc::new(DashMap::new()),
+            user_sessions: Arc::new(DashMap::new()),
+            pending_operations: Arc::new(DashMap::new()),
+            database: Some(database),
+        }
+    }
+    
+    /// Create application state from configuration
+    pub async fn from_config(config: &crate::config::Config) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+        let db_config = config.get_database_config();
+        
+        match db_config {
+            DatabaseConfig::None => {
+                log::info!("🚫 Database disabled - running in memory-only mode");
+                Ok(Self::new())
+            }
+            _ => {
+                log::info!("🗄️ Initializing database...");
+                let database = DatabaseManager::create_provider(db_config).await?;
+                Ok(Self::with_database(database))
+            }
         }
     }
 
@@ -98,8 +132,16 @@ impl AppState {
     }
 
     /// Store a forwarded message mapping for admin replies
-    pub fn store_forwarded_message(&self, admin_msg_id: MessageId, original_chat_id: ChatId, original_msg_id: MessageId) {
+    pub async fn store_forwarded_message(&self, admin_msg_id: MessageId, original_chat_id: ChatId, original_msg_id: MessageId) {
+        // Store in memory for fast access
         self.forwarded_messages.insert(admin_msg_id, (original_chat_id, original_msg_id));
+        
+        // Also persist to database if available
+        if let Some(ref db) = self.database {
+            if let Err(e) = db.store_forwarded_message(admin_msg_id, original_chat_id, original_msg_id).await {
+                log::error!("Failed to persist forwarded message to database: {}", e);
+            }
+        }
     }
 
     /// Get original message info from a forwarded message
@@ -108,9 +150,18 @@ impl AppState {
     }
 
     /// Register a new group
-    pub fn register_group(&self, chat_id: ChatId, group_name: String) {
+    pub async fn register_group(&self, chat_id: ChatId, group_name: String) {
         log::info!("📝 Registered new group: {} ({})", group_name, chat_id);
-        self.managed_groups.insert(chat_id, group_name);
+        
+        // Store in memory for fast access
+        self.managed_groups.insert(chat_id, group_name.clone());
+        
+        // Also persist to database if available
+        if let Some(ref db) = self.database {
+            if let Err(e) = db.store_managed_group(chat_id, &group_name).await {
+                log::error!("Failed to persist managed group to database: {}", e);
+            }
+        }
     }
 
     /// Get all managed groups
@@ -166,37 +217,48 @@ impl AppState {
         }
     }
 
-    /// Load initial data from database (placeholder for SQLite integration)
+    /// Load initial data from database
     pub async fn load_from_database(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        // TODO: Implement SQLite data loading
-        // This would load:
-        // - Managed groups from database
-        // - Recent forwarded messages
-        // - User preferences and session data
-        
-        log::info!("📥 Loading data from database...");
-        
-        // Placeholder implementation - in a real app, you'd:
-        // 1. Connect to SQLite database
-        // 2. Load managed groups and populate managed_groups
-        // 3. Load recent message mappings
-        // 4. Load user preferences
-        
-        log::info!("✅ Database loading complete (placeholder)");
+        if let Some(ref db) = self.database {
+            log::info!("📥 Loading data from database...");
+            
+            // Load managed groups
+            let groups = db.get_managed_groups().await?;
+            for group in groups {
+                self.managed_groups.insert(group.chat_id, group.group_name);
+            }
+            log::debug!("Loaded {} managed groups", self.managed_groups.len());
+            
+            // Load recent forwarded messages (last 1000 for memory efficiency)
+            let forwarded = db.get_recent_forwarded_messages(1000).await?;
+            for msg in forwarded {
+                self.forwarded_messages.insert(msg.admin_msg_id, (msg.original_chat_id, msg.original_msg_id));
+            }
+            log::debug!("Loaded {} forwarded message mappings", self.forwarded_messages.len());
+            
+            log::info!("✅ Database loading complete");
+        } else {
+            log::info!("📥 No database configured - starting with empty state");
+        }
         Ok(())
     }
 
-    /// Save current state to database (placeholder for SQLite integration)
+    /// Save current state to database
     pub async fn save_to_database(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        // TODO: Implement SQLite data saving
-        log::info!("💾 Saving state to database...");
-        
-        // Placeholder implementation - in a real app, you'd:
-        // 1. Save managed groups to database
-        // 2. Save recent message mappings
-        // 3. Save user session data and preferences
-        
-        log::info!("✅ Database saving complete (placeholder)");
+        if let Some(ref db) = self.database {
+            log::info!("💾 Saving state to database...");
+            
+            // Note: Individual operations (like storing forwarded messages, registering groups)
+            // are saved immediately when they happen, so this method is mainly for cleanup
+            // and ensuring consistency on shutdown.
+            
+            // Perform health check to ensure database is still accessible
+            db.health_check().await?;
+            
+            log::info!("✅ Database saving complete");
+        } else {
+            log::info!("💾 No database configured - state will be lost on restart");
+        }
         Ok(())
     }
 }
@@ -230,13 +292,13 @@ mod tests {
         assert!(!session.ai_enabled);
     }
 
-    #[test]
-    fn test_group_registration() {
+    #[tokio::test]
+    async fn test_group_registration() {
         let state = AppState::new();
         let chat_id = ChatId(-1001234567890);
         let group_name = "Test Group".to_string();
         
-        state.register_group(chat_id, group_name.clone());
+        state.register_group(chat_id, group_name.clone()).await;
         
         let groups = state.get_managed_groups();
         assert_eq!(groups.len(), 1);

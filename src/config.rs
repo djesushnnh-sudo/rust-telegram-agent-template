@@ -218,9 +218,9 @@ impl Config {
                 DatabaseConfig::SQLite { database_url: format!("sqlite:{}", url) }
             }
         }
-        // Default to SQLite
+        // Default to None (no database)
         else {
-            DatabaseConfig::default()
+            DatabaseConfig::None
         }
     }
 }

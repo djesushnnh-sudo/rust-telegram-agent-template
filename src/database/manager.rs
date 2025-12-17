@@ -18,9 +18,7 @@ pub enum DatabaseConfig {
 
 impl Default for DatabaseConfig {
     fn default() -> Self {
-        DatabaseConfig::SQLite {
-            database_url: "sqlite:bot.db".to_string(),
-        }
+        DatabaseConfig::None
     }
 }
 

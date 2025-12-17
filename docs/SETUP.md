@@ -43,7 +43,7 @@ Edit your `.env` file with the following configuration:
 
 ```bash
 # Your bot token from BotFather (REQUIRED)
-TELEGRAM_BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrsTUVwxyz
+TELEGRAM_BOT_TOKEN=your_bot_token_here
 ```
 
 ### Optional Variables

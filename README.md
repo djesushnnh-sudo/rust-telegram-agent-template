@@ -7,7 +7,7 @@ A clean, extensible foundation for building Telegram bots in Rust. This template
 - **🏗️ Production-Ready Architecture**: Based on patterns from real production bots with concurrent state management
 - **⚡ Modern Command System**: Type-safe command handling using BotCommands derive macro
 - **⚙️ Simple Configuration Management**: Easy setup with .env file for all environments
-- **🗄️ SQLite Database Integration**: Persistent storage with automatic migrations and state management
+- **🗄️ Optional Database Integration**: Works perfectly without a database, with easy SQLite integration when needed
 - **🤖 Enhanced AI Router**: Sophisticated message routing with session management and conversation context
 - **🔄 Concurrent State Management**: Thread-safe state using DashMap for high-performance concurrent access
 - **🛡️ Comprehensive Error Handling**: Production-grade error handling with graceful degradation
@@ -58,7 +58,7 @@ notepad .env
 
 Replace `your_bot_token_here` with your actual bot token:
 ```bash
-TELEGRAM_BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrsTUVwxyz
+TELEGRAM_BOT_TOKEN=your_bot_token_here
 ```
 
 ### 4. Build and Run
@@ -129,8 +129,9 @@ The bot uses environment variables for configuration. Copy `.env.example` to `.e
 # Your bot token from @BotFather (REQUIRED)
 TELEGRAM_BOT_TOKEN=your_bot_token_here
 
-# SQLite database for persistent storage (REQUIRED)
-DATABASE_URL=sqlite:./bot_database.db
+# Database is OPTIONAL - bot works perfectly without it!
+# Uncomment to enable persistent storage:
+# DATABASE_URL=sqlite:./bot_database.db
 ```
 
 ### Simple Configuration
@@ -148,12 +149,35 @@ BOT_PORT=8080                    # Port for webhook server
 # Feature toggles
 AI_ENABLED=false                 # Enable AI processing capabilities
 
+# Database configuration (OPTIONAL - bot works without it!)
+DATABASE_PROVIDER=sqlite         # Options: sqlite, memory, none
+DATABASE_URL=sqlite:bot.db       # Database file path
+
 # External API keys (optional)
 OPENAI_API_KEY=                  # OpenAI API key for AI features
 ANTHROPIC_API_KEY=               # Anthropic Claude API key
 ```
 
 See the [Setup Guide](docs/SETUP.md) for detailed configuration instructions.
+
+### 🗄️ Database: Optional but Powerful
+
+**The bot works perfectly without any database setup!** This makes it incredibly easy to get started:
+
+- **No Database (Default)**: Bot runs in memory-only mode - all features work, data doesn't persist across restarts
+- **SQLite Database**: Add `DATABASE_URL=sqlite:bot.db` to enable persistence
+- **Easy Migration**: Start without database, add it later when needed
+
+```bash
+# Quick start - no database needed
+TELEGRAM_BOT_TOKEN=your_token_here
+
+# Add persistence later
+TELEGRAM_BOT_TOKEN=your_token_here
+DATABASE_URL=sqlite:./bot_database.db
+```
+
+See [Database Configuration Guide](docs/DATABASE_OPTIONAL.md) for complete details.
 
 ## 🤖 Built-in Commands
 
