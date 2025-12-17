@@ -53,7 +53,6 @@ fn create_test_config() -> Config {
         port: Some(8080),
         ai_enabled: false,
         database_url: None,
-        deploy_env: "dev".to_string(),
     }
 }
 

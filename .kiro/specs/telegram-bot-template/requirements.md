@@ -61,14 +61,14 @@ This requirement enables rapid development by making command addition intuitive 
 
 **User Story:** As a developer, I want configuration management, so that I can easily customize bot settings without modifying code.
 
-This requirement supports deployment flexibility and environment-specific customization.
+This requirement supports deployment flexibility and simple configuration management.
 
 #### Acceptance Criteria
 
 1. WHEN the application starts THEN the Telegram_Bot_Template SHALL load configuration from environment variables or configuration files
 2. WHEN Bot_Token is missing THEN the Telegram_Bot_Template SHALL provide clear error messages about required configuration
 3. WHEN configuration is invalid THEN the Telegram_Bot_Template SHALL validate settings and report specific configuration errors
-4. WHEN deploying to different environments THEN the Telegram_Bot_Template SHALL support environment-specific configuration overrides
+4. WHEN deploying to different environments THEN the Telegram_Bot_Template SHALL use a single .env file for configuration
 5. WHEN configuration changes THEN the Telegram_Bot_Template SHALL allow runtime configuration updates where appropriate
 
 ### Requirement 5

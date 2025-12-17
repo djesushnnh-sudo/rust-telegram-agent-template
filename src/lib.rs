@@ -5,7 +5,7 @@
 //! concurrent state management, AI routing, and comprehensive database integration.
 
 // Core modules - these provide the essential bot functionality
-pub mod config;    // Enhanced configuration with environment-specific files
+pub mod config;    // Simple configuration management with .env file
 pub mod error;     // Comprehensive error handling and logging infrastructure
 pub mod commands;  // Modern command system using BotCommands derive macro
 pub mod state;     // Concurrent state management with DashMap

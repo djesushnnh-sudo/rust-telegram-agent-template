@@ -14,7 +14,7 @@ use telegram_bot_template::error::LoggingConfig;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Load configuration and environment-specific files first (like Dads2Dads)
+    // Load configuration from .env file
     let config = match Config::from_env() {
         Ok(config) => {
             println!("✅ Configuration loaded successfully");

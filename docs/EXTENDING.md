@@ -958,7 +958,7 @@ COPY --from=builder /app/target/release/telegram-bot-template /usr/local/bin/
 CMD ["telegram-bot-template"]
 ```
 
-### Environment-Specific Configuration
+### Docker Configuration
 
 ```yaml
 # docker-compose.yml for development

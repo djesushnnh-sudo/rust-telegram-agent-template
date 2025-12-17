@@ -49,16 +49,12 @@ pub struct Config {
     
     /// SQLite database URL for persistent storage
     pub database_url: Option<String>,
-    
-    /// Deployment environment (dev, staging, prod)
-    pub deploy_env: String,
 }
 
 impl Config {
-    /// Load configuration from environment variables and environment-specific files
+    /// Load configuration from environment variables
     /// 
-    /// This method first loads environment-specific configuration files (e.g., .env.dev, .env.prod)
-    /// based on the DEPLOY_ENV variable, then loads configuration from environment variables.
+    /// This method loads the .env file and then reads configuration from environment variables.
     pub fn from_env() -> ConfigResult<Self> {
         // Load .env file (simple approach for template)
         println!("DEBUG: Loading .env file");
@@ -101,9 +97,6 @@ impl Config {
             })?;
 
         let database_url = env::var("DATABASE_URL").ok();
-        
-        // Set deploy_env to a default value since we're using simple .env loading
-        let deploy_env = "prod".to_string();
 
         let config = Config {
             bot_token,
@@ -112,7 +105,6 @@ impl Config {
             port,
             ai_enabled,
             database_url,
-            deploy_env,
         };
 
         config.validate()?;
@@ -197,7 +189,6 @@ impl Default for Config {
             port: Some(8080),
             ai_enabled: false,
             database_url: None,
-            deploy_env: "dev".to_string(),
         }
     }
 }
@@ -216,7 +207,6 @@ mod tests {
             port: Some(8080),
             ai_enabled: false,
             database_url: None,
-            deploy_env: "dev".to_string(),
         };
 
         assert!(config.validate().is_ok());
@@ -231,7 +221,6 @@ mod tests {
             port: Some(8080),
             ai_enabled: false,
             database_url: None,
-            deploy_env: "dev".to_string(),
         };
 
         assert!(config.validate().is_err());
@@ -246,7 +235,6 @@ mod tests {
             port: Some(8080),
             ai_enabled: false,
             database_url: None,
-            deploy_env: "dev".to_string(),
         };
 
         assert!(config.validate().is_err());
@@ -261,7 +249,6 @@ mod tests {
             port: Some(8080),
             ai_enabled: false,
             database_url: None,
-            deploy_env: "dev".to_string(),
         };
 
         assert!(config.validate().is_err());
@@ -276,7 +263,6 @@ mod tests {
             port: Some(100), // Invalid port (too low)
             ai_enabled: false,
             database_url: None,
-            deploy_env: "dev".to_string(),
         };
 
         assert!(config.validate().is_err());

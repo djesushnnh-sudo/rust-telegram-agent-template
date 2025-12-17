@@ -6,7 +6,7 @@ A clean, extensible foundation for building Telegram bots in Rust. This template
 
 - **🏗️ Production-Ready Architecture**: Based on patterns from real production bots with concurrent state management
 - **⚡ Modern Command System**: Type-safe command handling using BotCommands derive macro
-- **⚙️ Environment-Specific Configuration**: Support for .env.dev, .env.prod files like production systems
+- **⚙️ Simple Configuration Management**: Easy setup with .env file for all environments
 - **🗄️ SQLite Database Integration**: Persistent storage with automatic migrations and state management
 - **🤖 Enhanced AI Router**: Sophisticated message routing with session management and conversation context
 - **🔄 Concurrent State Management**: Thread-safe state using DashMap for high-performance concurrent access
@@ -133,14 +133,8 @@ TELEGRAM_BOT_TOKEN=your_bot_token_here
 DATABASE_URL=sqlite:./bot_database.db
 ```
 
-### Environment-Specific Configuration
-```bash
-# Deployment environment (affects which .env file is loaded)
-DEPLOY_ENV=dev                   # Options: dev, staging, prod
-
-# The bot will load .env.{DEPLOY_ENV} first, then fall back to .env
-# This allows different configurations for different environments
-```
+### Simple Configuration
+The bot uses a single `.env` file for all configuration. This keeps setup simple and beginner-friendly.
 
 ### Optional Configuration
 ```bash
