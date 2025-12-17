@@ -92,6 +92,7 @@ fn property_configuration_validation_completeness(
         port,
         ai_enabled: false, // This field is always valid
         database_url: None,
+        database_provider: None,
     };
 
     let validation_result = config.validate();

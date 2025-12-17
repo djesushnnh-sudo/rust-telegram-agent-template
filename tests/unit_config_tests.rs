@@ -21,6 +21,7 @@ fn test_config_validation_empty_token() {
         port: None,
         ai_enabled: false,
         database_url: None,
+        database_provider: None,
     };
     
     let result = config.validate();
@@ -36,6 +37,7 @@ fn test_config_validation_token_without_colon() {
         port: None,
         ai_enabled: false,
         database_url: None,
+        database_provider: None,
     };
     
     let result = config.validate();
@@ -58,6 +60,7 @@ fn test_config_validation_invalid_log_level() {
         port: None,
         ai_enabled: false,
         database_url: None,
+        database_provider: None,
     };
     
     let result = config.validate();
@@ -80,6 +83,7 @@ fn test_config_validation_invalid_webhook_url_format() {
         port: None,
         ai_enabled: false,
         database_url: None,
+        database_provider: None,
     };
     
     let result = config.validate();
@@ -101,6 +105,7 @@ fn test_config_validation_port_too_low() {
         port: Some(500), // Below 1024
         ai_enabled: false,
         database_url: None,
+        database_provider: None,
     };
     
     let result = config.validate();
@@ -122,6 +127,7 @@ fn test_config_helper_methods() {
         port: Some(9000),
         ai_enabled: false,
         database_url: None,
+        database_provider: None,
     };
     
     // Test helper methods
@@ -155,6 +161,7 @@ fn test_config_edge_case_whitespace_webhook() {
         port: None,
         ai_enabled: false,
         database_url: None,
+        database_provider: None,
     };
     
     // This should fail validation because whitespace-only URLs are invalid
@@ -171,6 +178,7 @@ fn test_config_boundary_port_values() {
         port: Some(1024),
         ai_enabled: false,
         database_url: None,
+        database_provider: None,
     };
     
     assert!(config.validate().is_ok());

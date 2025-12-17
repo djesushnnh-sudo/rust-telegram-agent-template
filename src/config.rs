@@ -47,8 +47,13 @@ pub struct Config {
     /// Enable AI processing (default: false)
     pub ai_enabled: bool,
     
-    /// SQLite database URL for persistent storage
+    /// Database URL for persistent storage
+    /// Supports: sqlite:path/to/db.db, memory:, none:
     pub database_url: Option<String>,
+    
+    /// Database provider type (sqlite, memory, none)
+    /// If not specified, will be inferred from database_url
+    pub database_provider: Option<String>,
 }
 
 impl Config {
@@ -97,6 +102,7 @@ impl Config {
             })?;
 
         let database_url = env::var("DATABASE_URL").ok();
+        let database_provider = env::var("DATABASE_PROVIDER").ok();
 
         let config = Config {
             bot_token,
@@ -105,6 +111,7 @@ impl Config {
             port,
             ai_enabled,
             database_url,
+            database_provider,
         };
 
         config.validate()?;
@@ -178,6 +185,44 @@ impl Config {
     pub fn get_webhook_url(&self) -> Option<&str> {
         self.webhook_url.as_deref()
     }
+    
+    /// Get database configuration
+    pub fn get_database_config(&self) -> crate::database::DatabaseConfig {
+        use crate::database::DatabaseConfig;
+        
+        // If database_provider is explicitly set, use it
+        if let Some(ref provider) = self.database_provider {
+            match provider.as_str() {
+                "sqlite" => {
+                    let url = self.database_url.as_deref().unwrap_or("sqlite:bot.db");
+                    DatabaseConfig::SQLite { database_url: url.to_string() }
+                }
+                "memory" => DatabaseConfig::InMemory,
+                "none" => DatabaseConfig::None,
+                _ => {
+                    log::warn!("Unknown database provider '{}', defaulting to SQLite", provider);
+                    DatabaseConfig::default()
+                }
+            }
+        }
+        // Otherwise, infer from database_url
+        else if let Some(ref url) = self.database_url {
+            if url.starts_with("sqlite:") {
+                DatabaseConfig::SQLite { database_url: url.clone() }
+            } else if url.starts_with("memory:") || url.starts_with("mem:") {
+                DatabaseConfig::InMemory
+            } else if url.starts_with("none:") || url.starts_with("noop:") {
+                DatabaseConfig::None
+            } else {
+                // Assume SQLite for backward compatibility
+                DatabaseConfig::SQLite { database_url: format!("sqlite:{}", url) }
+            }
+        }
+        // Default to SQLite
+        else {
+            DatabaseConfig::default()
+        }
+    }
 }
 
 impl Default for Config {
@@ -189,6 +234,7 @@ impl Default for Config {
             port: Some(8080),
             ai_enabled: false,
             database_url: None,
+            database_provider: None,
         }
     }
 }
@@ -207,6 +253,7 @@ mod tests {
             port: Some(8080),
             ai_enabled: false,
             database_url: None,
+            database_provider: None,
         };
 
         assert!(config.validate().is_ok());
@@ -221,6 +268,7 @@ mod tests {
             port: Some(8080),
             ai_enabled: false,
             database_url: None,
+            database_provider: None,
         };
 
         assert!(config.validate().is_err());
@@ -235,6 +283,7 @@ mod tests {
             port: Some(8080),
             ai_enabled: false,
             database_url: None,
+            database_provider: None,
         };
 
         assert!(config.validate().is_err());
@@ -249,6 +298,7 @@ mod tests {
             port: Some(8080),
             ai_enabled: false,
             database_url: None,
+            database_provider: None,
         };
 
         assert!(config.validate().is_err());
@@ -263,6 +313,7 @@ mod tests {
             port: Some(100), // Invalid port (too low)
             ai_enabled: false,
             database_url: None,
+            database_provider: None,
         };
 
         assert!(config.validate().is_err());

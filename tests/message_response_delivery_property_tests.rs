@@ -53,6 +53,7 @@ fn create_test_config() -> Config {
         port: Some(8080),
         ai_enabled: false,
         database_url: None,
+        database_provider: None,
     }
 }
 

@@ -15,6 +15,7 @@ fn create_test_config() -> Config {
         port: Some(8080),
         ai_enabled: false,
         database_url: None,
+        database_provider: None,
     }
 }
 
@@ -27,6 +28,7 @@ fn create_webhook_config() -> Config {
         port: Some(9000),
         ai_enabled: true,
         database_url: None,
+        database_provider: None,
     }
 }
 
